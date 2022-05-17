@@ -4,7 +4,8 @@ const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const app = express();
 const mongoose = require("mongoose");
-const encrypt = require("mongoose-encryption");
+const encrypt = require("mongoose-encryption"); // level 2 using secret key
+const md5 = require("md5"); // level 3 - hashing
 
 app.use(express.static("public"));
 app.set("view engine", "ejs");
@@ -17,7 +18,8 @@ const userSchema = new mongoose.Schema({
   password: String,
 });
 
-userSchema.plugin(encrypt, { secret: process.env.SECRET, encryptedFields: ["password"] }); // encrypt only password, not the email
+// secret key is in .env file to prevent someone from accessing it from github or so
+// userSchema.plugin(encrypt, { secret: process.env.SECRET, encryptedFields: ["password"] }); // encrypt only password, not the email
 
 const User = new mongoose.model("User", userSchema);
 
@@ -40,7 +42,7 @@ app.get("/secrets", (req, res) => {
 app.post("/register", (req, res) => {
   const newUser = new User({
     email: req.body.username,
-    password: req.body.password,
+    password: md5(req.body.password), // store password in hash format
   });
 
   // save() => mongoose enrypt
@@ -52,7 +54,7 @@ app.post("/register", (req, res) => {
 
 app.post("/login", (req, res) => {
   const email = req.body.username;
-  const password = req.body.password;
+  const password = md5(req.body.password); // hashing
 
   // find() => mongoose decrpyt
   User.findOne({ email: email }, function (err, foundUser) {
