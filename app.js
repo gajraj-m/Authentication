@@ -29,7 +29,8 @@ mongoose.connect("mongodb://localhost:27017/userDB", { useNewUrlParser: true });
 const userSchema = new mongoose.Schema({
   email: String,
   password: String,
-  googleId: String
+  googleId: String,
+  secret: String
 });
 
 // secret key is in .env file to prevent someone from accessing it from github or so
@@ -82,13 +83,15 @@ app.get("/register", (req, res) => {
   res.render("register");
 });
 
-app.get("/secrets", (req, res) => {
-  res.render("secrets");
-});
-
 app.get("/secrets", (req, res) =>{
-  if(req.isAuthenticated()) res.render("secrets");
-  else res.redirect("/login");
+  User.find({secret : {$ne: null}}, function(err, foundUsers){
+    if(err) console.log(err);
+    else{
+      if(foundUsers){
+        res.render("secrets", {usersWithSecrets : foundUsers});
+      }
+    }
+  });
 });
 
 app.get("/auth/google",
@@ -106,6 +109,27 @@ app.get("/auth/google/secrets",
 app.get("/logout", (req, res) => {
   req.logout();
   res.redirect("/");
+});
+
+app.get("/submit", (req, res) => {
+  if(req.isAuthenticated()) res.render("submit");
+  else res.redirect("/login");
+});
+
+app.post("/submit", (req, res) => {
+  const submittedSecret = req.body.secret;
+  // console.log(req.user); // we get id, username... so we can tap into ID and check what matches
+  User.findById(req.user.id, function(err, foundUser){
+    if(err) console.log(err);
+    else{
+      if(foundUser){
+        foundUser.secret = submittedSecret;
+        foundUser.save(function(){
+          res.redirect("/secrets");
+        });
+      }
+    }
+  });
 });
 
 app.post("/register", (req, res) => {
